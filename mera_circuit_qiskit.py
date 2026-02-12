@@ -66,11 +66,14 @@ def create_qnn():
         
     idx = 0
     
-    def apply_block(wires):
+    def apply_block(wires, up_or_down=1): # 1 one if the connection is from the top to bottom to define the pointing of the CNOT
         nonlocal idx
         qc.ry(weight_params[idx], wires[0])
         qc.ry(weight_params[idx+1], wires[1])
-        qc.cx(wires[0], wires[1])
+        if up_or_down:
+            qc.cx(wires[0], wires[1])
+        else:
+            qc.cx(wires[1], wires[0])
         idx += 2
 
     apply_block([1, 2]) # Wires 1-2

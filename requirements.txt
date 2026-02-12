@@ -1,0 +1,11 @@
+numpy
+tensorflow
+torch
+torchvision
+qiskit
+qiskit-machine-learning
+pennylane
+pennylane-qiskit
+scikit-learn
+matplotlib
+pylatexenc
