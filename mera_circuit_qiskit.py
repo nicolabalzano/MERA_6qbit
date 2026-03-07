@@ -106,10 +106,12 @@ def create_qnn(variant='mera'):
             qc.ry(weight_params[idx+1], wires[1])
             if up_or_down:
                 qc.cx(wires[0], wires[1])
+                qc.rx(weight_params[idx+2], wires[1])
+                qc.ry(weight_params[idx+3], wires[0])
             else:
                 qc.cx(wires[1], wires[0])
-            qc.ry(weight_params[idx+2], wires[0])
-            qc.rx(weight_params[idx+3], wires[1])
+                qc.ry(weight_params[idx+2], wires[1])
+                qc.rx(weight_params[idx+3], wires[0])
             idx += 4
         elif variant == 'RxRzCNOT':
             qc.rx(weight_params[idx], wires[0])
