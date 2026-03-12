@@ -49,28 +49,33 @@ def main():
         Y_test = torch.tensor(Y_test_np, dtype=torch.float32).reshape(-1, 1)
 
     if dataset == 'new':
-        df_train = pd.read_csv('data/new_data/train.csv')
+        df_train_full = pd.read_csv('data/new_data/train.csv')
         df_test = pd.read_csv('data/new_data/test.csv')
         
-        X_train_np = df_train.drop(columns=['classes']).values
-        Y_train_np = df_train['classes'].values
-        
-        # Select 200 samples per class for validation from the test set
+        # 1. Seleziona 200 campioni per classe per la VALIDAZIONE dal TRAIN
         val_indices = []
         for class_label in [0, 1]:
-            indices = df_test.index[df_test['classes'] == class_label].tolist()
+            # Cerchiamo gli indici nel dataframe di train
+            indices = df_train_full.index[df_train_full['classes'] == class_label].tolist()
             val_indices.extend(indices[:200])
         
-        df_val = df_test.loc[val_indices]
-        df_test_remaining = df_test.drop(val_indices)
+        df_val = df_train_full.loc[val_indices]
+        df_train_remaining = df_train_full.drop(val_indices)
+    
+        # Train (rimanente)
+        X_train_np = df_train_remaining.drop(columns=['classes']).values
+        Y_train_np = df_train_remaining['classes'].values
         
+        # Validation (estratto dal train)
         X_val_np = df_val.drop(columns=['classes']).values
         Y_val_np = df_val['classes'].values
         
-        X_test_np = df_test_remaining.drop(columns=['classes']).values
-        Y_test_np = df_test_remaining['classes'].values
+        # Test (integro)
+        X_test_np = df_test.drop(columns=['classes']).values
+        Y_test_np = df_test['classes'].values
 
-        # Convert to PyTorch tensors
+        #Conversione in PyTorch Tensors
+        
         X_train = torch.tensor(X_train_np, dtype=torch.float32)
         Y_train = torch.tensor(Y_train_np, dtype=torch.float32).reshape(-1, 1)
         
