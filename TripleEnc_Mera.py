@@ -50,6 +50,8 @@ def main():
 
     if dataset == 'new':
         df_train_full = pd.read_csv('data/new_data/train.csv')
+        # Shuffle train data to ensure validation set is representative
+        df_train_full = df_train_full.sample(frac=1, random_state=42).reset_index(drop=True)
         df_test = pd.read_csv('data/new_data/test.csv')
         
         # 1. Seleziona 200 campioni per classe per la VALIDAZIONE dal TRAIN
