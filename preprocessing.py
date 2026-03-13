@@ -212,9 +212,9 @@ def data_load_and_process_mnist(
         X_train = extract_embeddings(autoencoder, X_train)
         X_test = extract_embeddings(autoencoder, X_test)
 
-    #X_train = (X_train - X_train.min()) * (np.pi / (X_train.max() - X_train.min()))
-    #X_test = (X_test - X_test.min()) * (np.pi / (X_test.max() - X_test.min()))
-    
+    X_train = (X_train - X_train.min()) * (np.pi / (X_train.max() - X_train.min()))
+    X_test = (X_test - X_test.min()) * (np.pi / (X_test.max() - X_test.min()))
+    """
     # First, calculate scale parameters from training data ONLY to avoid leakage and ensure consistency
     x_min = X_train.min()
     x_max = X_train.max()
@@ -222,7 +222,7 @@ def data_load_and_process_mnist(
     # Scale both using training parameters
     X_train = (X_train - x_min) * (np.pi / (x_max - x_min))
     X_test = (X_test - x_min) * (np.pi / (x_max - x_min))
-    
+    """
 
     return X_train, X_test, Y_train, Y_test, total_time
 

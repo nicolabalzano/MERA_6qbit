@@ -50,25 +50,29 @@ def main():
 
     if dataset == 'new':
         df_train_full = pd.read_csv('data/new_data/train.csv')
-        # Shuffle train data to ensure validation set is representative
+        # Shuffle train data
         df_train_full = df_train_full.sample(frac=1, random_state=42).reset_index(drop=True)
         df_test = pd.read_csv('data/new_data/test.csv')
         
-        # 1. Seleziona 200 campioni per classe per la VALIDAZIONE dal TRAIN
+        # 100 per classe per VAL, 300 per classe per TRAIN
+        n_val_per_class = 100
+        n_train_per_class = 300
+
         val_indices = []
+        train_indices = []
         for class_label in [0, 1]:
-            # Cerchiamo gli indici nel dataframe di train
             indices = df_train_full.index[df_train_full['classes'] == class_label].tolist()
-            val_indices.extend(indices[:200])
+            val_indices.extend(indices[:n_val_per_class])
+            train_indices.extend(indices[n_val_per_class:n_val_per_class + n_train_per_class])
         
         df_val = df_train_full.loc[val_indices]
-        df_train_remaining = df_train_full.drop(val_indices)
+        df_train_sub = df_train_full.loc[train_indices]
     
-        # Train (rimanente)
-        X_train_np = df_train_remaining.drop(columns=['classes']).values
-        Y_train_np = df_train_remaining['classes'].values
+        # Train
+        X_train_np = df_train_sub.drop(columns=['classes']).values
+        Y_train_np = df_train_sub['classes'].values
         
-        # Validation (estratto dal train)
+        # Validation
         X_val_np = df_val.drop(columns=['classes']).values
         Y_val_np = df_val['classes'].values
         
