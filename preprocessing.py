@@ -226,3 +226,118 @@ def data_load_and_process_mnist(
 
     return X_train, X_test, Y_train, Y_test, total_time
 
+
+def data_load_and_process_ctscan(
+        dataset_path,
+        num_examples_per_class,
+        seed,
+        img_size=28,
+        pca=False,
+        n_features=6,
+        epochs=50,
+        margin=0.2,
+        alpha=1.0,
+        test_split=0.2,
+):
+    """
+    Carica le immagini CT-scan SARS-CoV-2 (COVID / non-COVID), le
+    ridimensiona a img_size x img_size in scala di grigi, le appiattisce
+    e applica la stessa pipeline TripletAutoencoder usata per MNIST.
+
+    Restituisce: X_train, X_test, Y_train, Y_test, total_time
+    """
+    from PIL import Image
+    import os
+
+    if seed is not None:
+        np.random.seed(seed)
+        random.seed(seed)
+
+    class_dirs = {0: os.path.join(dataset_path, 'non-COVID'),
+                  1: os.path.join(dataset_path, 'COVID')}
+
+    images_all = []
+    labels_all = []
+
+    for label, folder in class_dirs.items():
+        files = np.array(sorted([f for f in os.listdir(folder)
+                                  if f.lower().endswith('.png')]))
+        np.random.shuffle(files)
+        files = files[:num_examples_per_class]
+        for fname in files:
+            img_path = os.path.join(folder, fname)
+            img = Image.open(img_path).convert('L')          # grayscale
+            img = img.resize((img_size, img_size), Image.LANCZOS)
+            arr = np.array(img, dtype=np.float32) / 255.0
+            images_all.append(arr.flatten())
+            labels_all.append(label)
+
+    X = np.array(images_all)
+    Y = np.array(labels_all)
+
+    # Shuffle everything
+    perm = np.random.permutation(len(X))
+    X, Y = X[perm], Y[perm]
+
+    # Train / test split
+    n_test = int(len(X) * test_split)
+    X_test, Y_test = X[:n_test], Y[:n_test]
+    X_train_full, Y_train_full = X[n_test:], Y[n_test:]
+
+    # Separate the 200 samples used as Validation
+    num_val = 200
+    if len(X_train_full) > num_val:
+        X_train_pure = X_train_full[:-num_val]
+        Y_train_pure = Y_train_full[:-num_val]
+        X_val = X_train_full[-num_val:]
+        Y_val = Y_train_full[-num_val:]
+    else:
+        # Fallback di sicurezza nel caso i campioni siano troppo pochi
+        X_train_pure = X_train_full
+        Y_train_pure = Y_train_full
+        X_val = np.array([])
+        Y_val = np.array([])
+
+    input_dim = img_size * img_size
+
+    if pca:
+        from sklearn.decomposition import PCA as _PCA
+        start = time.time()
+        pca_model = _PCA(n_features)
+        X_train_pure = pca_model.fit_transform(X_train_pure)
+        if len(X_val) > 0:
+            X_val = pca_model.transform(X_val)
+        X_test = pca_model.transform(X_test)
+        end = time.time()
+        total_time = end - start
+    else:
+        autoencoder = TripletAutoencoder(input_dim=input_dim, bottleneck_dim=n_features)
+        start = time.time()
+        # TRAIN DELL'ENCODER SOLO SUL TRAIN PURO (Senza i dati val)
+        autoencoder = train_triplet_autoencoder(
+            autoencoder,
+            X_train_pure,
+            Y_train_pure,
+            n_epochs=epochs,
+            batch_size=100,
+            lr=1e-3,
+            margin=margin,
+            alpha=alpha,
+        )
+        end = time.time()
+        total_time = end - start
+        
+        # Estraiamo per i 3 set
+        X_train_pure = extract_embeddings(autoencoder, X_train_pure)
+        if len(X_val) > 0:
+            X_val = extract_embeddings(autoencoder, X_val)
+        X_test = extract_embeddings(autoencoder, X_test)
+
+    # Normalise to [0, pi] as done for MNIST
+    X_train_pure = (X_train_pure - X_train_pure.min()) * (np.pi / (X_train_pure.max() - X_train_pure.min()))
+    if len(X_val) > 0:
+        X_val = (X_val - X_val.min()) * (np.pi / (X_val.max() - X_val.min()))
+    X_test = (X_test - X_test.min()) * (np.pi / (X_test.max() - X_test.min()))
+
+    return X_train_pure, X_val, X_test, Y_train_pure, Y_val, Y_test, total_time
+

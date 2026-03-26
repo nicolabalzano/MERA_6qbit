@@ -9,13 +9,13 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from mera_circuit_qiskit import create_qnn, EarlyStopping, QuantumMERAClassifier
-from preprocessing import data_load_and_process_mnist
+from preprocessing import data_load_and_process_mnist, data_load_and_process_ctscan
 import os
 
 
 def main():
     print("---Training Triplet Autoencoder and extracting features---")
-    dataset = 'new' # 'mnist' or 'new'
+    dataset = 'ctscan'  # 'mnist', 'new', or 'ctscan'
 
     if dataset == 'mnist':
         X_train_np, X_test_np, Y_train_np, Y_test_np, _ = data_load_and_process_mnist(
@@ -48,7 +48,7 @@ def main():
         X_test = torch.tensor(X_test_np, dtype=torch.float32)
         Y_test = torch.tensor(Y_test_np, dtype=torch.float32).reshape(-1, 1)
 
-    if dataset == 'new':
+    elif dataset == 'new':
         df_train_full = pd.read_csv('data/new_data/train.csv')
         # Shuffle train data
         df_train_full = df_train_full.sample(frac=1, random_state=42).reset_index(drop=True)
@@ -90,6 +90,29 @@ def main():
         
         X_test = torch.tensor(X_test_np, dtype=torch.float32)
         Y_test = torch.tensor(Y_test_np, dtype=torch.float32).reshape(-1, 1)
+
+    elif dataset == 'ctscan':
+        # Carichiamo molta più mole di dati per evitare l'overfitting!
+        X_train_np, X_val_np, X_test_np, Y_train_np, Y_val_np, Y_test_np, _ = data_load_and_process_ctscan(
+            dataset_path='data/sarscov2-ctscan-dataset',
+            num_examples_per_class=1200, # Prima era 250. Ora usiamo ~tutto il dataset (2400 campioni in totale)
+            seed=42,
+            img_size=28,
+            pca=False,
+            n_features=6,
+            epochs=50,
+            margin=0.2,
+            alpha=1.0,
+            test_split=0.2,
+        )
+        X_train = torch.tensor(X_train_np, dtype=torch.float32)
+        Y_train = torch.tensor(Y_train_np, dtype=torch.float32).reshape(-1, 1)
+
+        X_val = torch.tensor(X_val_np, dtype=torch.float32)
+        Y_val = torch.tensor(Y_val_np, dtype=torch.float32).reshape(-1, 1)
+
+        X_test = torch.tensor(X_test_np, dtype=torch.float32)
+        Y_test = torch.tensor(Y_test_np, dtype=torch.float32).reshape(-1, 1)
     
     
     print("\nData loaded. Tensor shapes:")
@@ -103,8 +126,10 @@ def main():
     for architecture in architectures:
         print(f"\n===== VQC Architecture: {architecture} =====")
         
-        # Create directory for results
-        out_dir = f"results_triple_enc_{architecture}"
+        main_out_dir = f"result_{dataset}"
+        os.makedirs(main_out_dir, exist_ok=True)
+        
+        out_dir = os.path.join(main_out_dir, f"{architecture}")
         os.makedirs(out_dir, exist_ok=True)
         qnn, qc = create_qnn(architecture)
         qc.draw(output='mpl', filename=os.path.join(out_dir, f'mera_circuit_{architecture}.png'))
@@ -115,8 +140,8 @@ def main():
 
         epochs = 50
         batch_size = 20
-        dataset = torch.utils.data.TensorDataset(X_train, Y_train)
-        dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        torch_dataset = torch.utils.data.TensorDataset(X_train, Y_train)
+        dataloader = torch.utils.data.DataLoader(torch_dataset, batch_size=batch_size, shuffle=True)
 
         early_stopping = EarlyStopping(patience=5, min_delta=0.001)
 
@@ -240,9 +265,11 @@ def main():
             'Test Loss': test_loss
         })
 
-    # Save to CSV
+    # Save to CSV in the main specific dataset folder
     df = pd.DataFrame(results)
-    csv_path = 'risultati_architetture_triple_enc.csv'
+    main_out_dir = f"result_{dataset}"
+    os.makedirs(main_out_dir, exist_ok=True)
+    csv_path = os.path.join(main_out_dir, f'risultati_architetture_triple_enc_{dataset}.csv')
     df.to_csv(csv_path, index=False)
     print(f"\n==========\nTraining Complete.\nResults saved to {csv_path}\n==========")
 
