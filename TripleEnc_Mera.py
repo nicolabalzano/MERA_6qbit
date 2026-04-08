@@ -15,7 +15,7 @@ import os
 
 def main():
     print("---Training Triplet Autoencoder and extracting features---")
-    dataset = 'ctscan'  # 'mnist', 'new', or 'ctscan'
+    dataset = 'mnist'  # 'mnist', 'new', or 'ctscan'
 
     if dataset == 'mnist':
         X_train_np, X_test_np, Y_train_np, Y_test_np, _ = data_load_and_process_mnist(
